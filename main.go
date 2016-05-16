@@ -10,7 +10,6 @@ import (
 	"log/syslog"
 	"net"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -55,7 +54,7 @@ func main() {
 
 func NewServer() *Server {
 	s := &Server{
-		elasticUrl: "http://" + *elasticHost + ":" + strconv.Itoa(*elasticPort) + "/_cluster/health",
+		elasticUrl: fmt.Sprintf("http://%s:%d/_cluster/health", *elasticHost, *elasticPort),
 		graphite:   fmt.Sprintf("%s:%d", *graphiteHost, *graphitePort),
 		graphiteDb: *graphiteDb,
 		period:     *pollPeriod,
