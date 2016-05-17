@@ -1,3 +1,5 @@
+// Fetch ElasticSearch cluster status and performance data and store it
+// into Graphite.
 package main
 
 import (
@@ -15,7 +17,8 @@ import (
 
 import _ "expvar"
 
-const defaultTimeout = 5
+// DefaultTimeout is connection timeout, in seconds
+const DefaultTimeout = 5
 
 var (
 	elasticHost  = flag.String("eh", "", "IP, FQDN or hostname of your ElasticSearch host")
@@ -27,17 +30,32 @@ var (
 )
 
 var (
-	elasticData  chan interface{}
+	// elasticData is JSON response from ElasticSearch host
+	elasticData chan interface{}
+
+	// graphiteData is transformed data into valid Carbon metrics
 	graphiteData chan string
 )
 
+// Server describes how service should be configured
 type Server struct {
-	Syslog     *syslog.Writer
-	period     time.Duration
-	elasticUrl string
-	graphite   string
+	// Shared syslog between methods for this receiver
+	Syslog *syslog.Writer
+
+	// Poll interval for fetching ES cluster data and storing it into Graphite
+	period time.Duration
+
+	// Stats URL of ES node
+	elasticURL string
+
+	// Carbon host
+	graphite string
+
+	// Graphite database name
 	graphiteDb string
-	timeout    time.Duration
+
+	// Connection timeout
+	timeout time.Duration
 }
 
 func init() {
@@ -54,20 +72,21 @@ func main() {
 
 func NewServer() *Server {
 	s := &Server{
-		elasticUrl: fmt.Sprintf("http://%s:%d/_cluster/health", *elasticHost, *elasticPort),
+		elasticURL: fmt.Sprintf("http://%s:%d/_cluster/health", *elasticHost, *elasticPort),
 		graphite:   fmt.Sprintf("%s:%d", *graphiteHost, *graphitePort),
 		graphiteDb: *graphiteDb,
 		period:     *pollPeriod,
-		timeout:    defaultTimeout * time.Second,
+		timeout:    DefaultTimeout * time.Second,
 	}
 
 	s.setupSyslog()
-	fmt.Printf("ElasticSearch cluster health URL: %s\n", s.elasticUrl)
+	fmt.Printf("ElasticSearch cluster health URL: %s\n", s.elasticURL)
 	fmt.Printf("Poll period: %s\n", s.period)
 
 	return s
 }
 
+// Setups syslog
 func (s *Server) setupSyslog() {
 	var err error
 	s.Syslog, err = syslog.New(syslog.LOG_ERR, "esmetrics")
@@ -77,6 +96,7 @@ func (s *Server) setupSyslog() {
 	}
 }
 
+// Run our service
 func (s *Server) run() {
 	for {
 		go s.fetchElasticData()
@@ -90,6 +110,9 @@ func (s *Server) run() {
 	}
 }
 
+// Fetches data from ElasticSearch host and sends it
+// to a channel. If there is a error nil will be sent to
+// channel.
 func (s *Server) fetchElasticData() {
 	var (
 		resp     *http.Response
@@ -98,14 +121,13 @@ func (s *Server) fetchElasticData() {
 		err      error
 	)
 
-	resp, err = http.Get(s.elasticUrl)
+	resp, err = http.Get(s.elasticURL)
 	if err != nil {
 		s.Syslog.Err("Could not connect to ElasticSearch server")
 		elasticData <- nil
 		return
-	} else {
-		defer resp.Body.Close()
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		s.Syslog.Warning("HTTP response code was not 200: " + resp.Status)
@@ -130,6 +152,8 @@ func (s *Server) fetchElasticData() {
 	elasticData <- jsonData
 }
 
+// Creates valid Carbon metrics, in following format:
+// "<graphite_database >.<metric> <value> <timestamp> \n"
 func (s *Server) createGraphiteData(data interface{}) {
 	t := time.Now()
 	var tmp string
@@ -163,6 +187,7 @@ func (s *Server) createGraphiteData(data interface{}) {
 	graphiteData <- tmp
 }
 
+// Connects to Carbon host and sends data to it
 func (s *Server) sendToGraphite(data string) {
 	var (
 		conn net.Conn
@@ -173,9 +198,8 @@ func (s *Server) sendToGraphite(data string) {
 	if err != nil {
 		s.Syslog.Warning("Could not connect to Carbon server")
 		return
-	} else {
-		defer conn.Close()
 	}
+	defer conn.Close()
 
 	buf := bytes.NewBufferString(data)
 	_, err = conn.Write(buf.Bytes())
@@ -185,6 +209,7 @@ func (s *Server) sendToGraphite(data string) {
 
 }
 
+// Decodes JSON data
 func decodeJSON(jsonBlob []byte) (interface{}, error) {
 	var r interface{}
 

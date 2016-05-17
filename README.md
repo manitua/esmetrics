@@ -1,6 +1,9 @@
 ESmetrics
 =========
 [![Build Status](https://travis-ci.org/manitua/esmetrics.svg?branch=master)](https://travis-ci.org/manitua/esmetrics)
+[![GoDoc](https://godoc.org/github.com/manitua/esmetrics?status.svg)](https://godoc.org/github.com/manitua/esmetrics)
+
+
 Grab ES cluster status and performance data and store it in Graphite for use in Graphana dashboard.
 
 Usage
