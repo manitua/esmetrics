@@ -4,20 +4,20 @@ ESmetrics
 [![GoDoc](https://godoc.org/github.com/manitua/esmetrics?status.svg)](https://godoc.org/github.com/manitua/esmetrics)
 
 
-Grab ES cluster status and performance data and store it in Graphite for use in Graphana dashboard.
+Grab Elasticsearch cluster status and performance data and store it in Graphite for use in Graphana dashboard.
 
 Usage
 -----
     Usage of ./esmetrics:
-      --eh string
+      -eh string
         	IP, FQDN or hostname of your ElasticSearch host
-      --ep int
+      -ep int
         	ElasticSearch hosts port (default 9200)
-      --gd string
+      -gd string
         	Graphite database name (default "elasticsearch.cluster")
-      --gh string
+      -gh string
         	IP, FQDN or hostname of your Carbon host
-      --gp int
+      -gp int
         	Carbon hosts port (default 2003)
-      --poll duration
+      -poll duration
         	Metrics poll interval (default 20s)
